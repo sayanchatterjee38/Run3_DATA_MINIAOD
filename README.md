@@ -14,7 +14,7 @@ cd CMSSW_13_2_5_patch1/src
 
 cmsenv
 
-git clone -b CMSSW_13_2_X_trkAnalysis git@github.com:CesarBernardes/TrackingCode.git .
+git clone -b temp https://github.com/sayanchatterjee38/Run3_DATA_MINIAOD.git .
 
 scram build clean
 
