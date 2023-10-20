@@ -23,7 +23,8 @@ process.options = cms.untracked.PSet(
 # Configure the number of maximum event the analyser run on in interactive mode
 # -1 == ALL
 process.maxEvents = cms.untracked.PSet( 
-    input = cms.untracked.int32(-1) 
+    input = cms.untracked.int32(100000) 
+    #input = cms.untracked.int32(100) 
 )
 
 
@@ -88,6 +89,9 @@ process.eventFilter = cms.Sequence(
 process.TFileService = cms.Service("TFileService",fileName = cms.string('pbpb_miniAOD_nonsym_C2_cent080_run3.root'))
 
 ###trigger selection for data
+#import HLTrigger.HLTfilters.hltHighLevel_cfi
+#process.hltMB = HLTrigger.HLTfilters.hltHighLevel_cfi.hltHighLevel.clone()
+#process.hltMB.HLTPaths = ["HLT_HIMinimumBiasHF1AND_v*"]
 #process.hltMB.andOr = cms.bool(True)  # True = OR, False = AND between the HLT paths
 #process.hltMB.throw = cms.bool(False) # throw exception on unknown path names
 
@@ -103,6 +107,8 @@ process.hltfilter = hltHighLevel.clone(
 process.load("Analyzers.SayanCMW.SayanCMW_cfi")
 process.defaultCPDC.vertex = 'offlineSlimmedPrimaryVertices'
 process.load("Analyzers.SayanCMW.SayanCMW_cff")
+#process.SAYANCMW   = process.defaultCPDC.clone()
+
 
 process.defaultAnalysis_05     = process.CPDC05.clone()
 process.defaultAnalysis_510    = process.CPDC510.clone()
