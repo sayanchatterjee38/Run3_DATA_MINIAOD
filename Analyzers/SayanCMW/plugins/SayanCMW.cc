@@ -3,7 +3,7 @@
 //         Author: Sayan Chatterjee
 //         Class: SayanCMW 
 //         Checked version 24/06/2020
-//         Last Modified on 19/10/2023
+//         Last Modified on 20/10/2023
 //         miniAOD:: Data
 //         
 
@@ -27,6 +27,9 @@ SayanCMW::SayanCMW(const edm::ParameterSet& iConfig) :  //Parametrized Construct
   chi2Map_( consumes< edm::ValueMap< float > >( iConfig.getParameter< edm::InputTag >( "trackschi2" ) ) ),
   vtxTags_(consumes<reco::VertexCollection>(iConfig.getParameter<edm::InputTag>("vertex"))),
 
+  //for generalAndHiPixel tracks
+  trackTags_merge_(consumes<reco::TrackCollection>(iConfig.getParameter<edm::InputTag>("tracks_merge"))),
+  
   //centrality bin
   cent_bin_(consumes<int>(iConfig.getParameter<edm::InputTag>("centralitybin"))),
   cent_reco_(consumes<reco::Centrality>(iConfig.getParameter<edm::InputTag>("CentReco"))),
@@ -77,20 +80,14 @@ SayanCMW::SayanCMW(const edm::ParameterSet& iConfig) :  //Parametrized Construct
   trg_ptbin(iConfig.getUntrackedParameter< std::vector < double > >("trigger_ptbin")),
   ass_ptbin(iConfig.getUntrackedParameter< std::vector < double > >("associate_ptbin")),
   etabining(iConfig.getUntrackedParameter< std::vector < double > >("variable_etabin")),
-//etabining5(iConfig.getUntrackedParameter< std::vector < double > >("etabinwidth_p5")),
-  etabining4(iConfig.getUntrackedParameter< std::vector < double > >("etabinwidth_p4")),
-  etabining3(iConfig.getUntrackedParameter< std::vector < double > >("etabinwidth_p3")),
-  etabining2(iConfig.getUntrackedParameter< std::vector < double > >("etabinwidth_p2")),
   pTbining(iConfig.getUntrackedParameter< std::vector < double > >("variable_pTbin")),
   phibining(iConfig.getUntrackedParameter< std::vector < double > >("variable_phibin")),
   centbining(iConfig.getUntrackedParameter< std::vector < double > >("variable_centbin")),
-  zvtxbining3(iConfig.getUntrackedParameter< std::vector < double > >("zvtxbinwidth_3")),
-  zvtxbining2p5(iConfig.getUntrackedParameter< std::vector < double > >("zvtxbinwidth_2p5")),
-  zvtxbining2(iConfig.getUntrackedParameter< std::vector < double > >("zvtxbinwidth_2")),
-  zvtxbining1p5(iConfig.getUntrackedParameter< std::vector < double > >("zvtxbinwidth_1p5")),
-  zvtxbining1(iConfig.getUntrackedParameter< std::vector < double > >("zvtxbinwidth_1")),
   bkgFactor(iConfig.getUntrackedParameter<unsigned int>("bkgFactor")),
   ifMcreco_(iConfig.getUntrackedParameter<bool>("ifMcreco")),
+  genTrk_(iConfig.getUntrackedParameter<bool>("genTrk")),
+  genAndHiPixTrk_(iConfig.getUntrackedParameter<bool>("genAndHiPixTrk")),
+  nonsym(iConfig.getUntrackedParameter<bool>("nonsym")),
   cent_nom(iConfig.getUntrackedParameter<bool>("cent_nom")),
   cent_up(iConfig.getUntrackedParameter<bool>("cent_up")),
   cent_down(iConfig.getUntrackedParameter<bool>("cent_down")),
@@ -158,10 +155,7 @@ SayanCMW::SayanCMW(const edm::ParameterSet& iConfig) :  //Parametrized Construct
   heta_nbin_ass    = fGlobalHist.make<TH1F>("heta_nbin_ass", "", (etabining.size() -1), &etabining[0] );
   hphi_nbin_ass    = fGlobalHist.make<TH1F>("hphi_nbin_ass", "", (phibining.size() -1), &phibining[0]);
   
-  hpt_trigg_check          = fGlobalHist.make<TH1F>("hpt_trigg_check", "", ptbin_trg, pt_trigg_min, pt_trigg_max );
-  hpt_ass_check          = fGlobalHist.make<TH1F>("hpt_ass_check", "", ptbin_trg, pt_ass_min, pt_ass_max );
-
-
+  
   h_nHits      = fGlobalHist.make<TH1D>("h_nHits", "", 100, 0., 100.);
   h_pterr      = fGlobalHist.make<TH1D>("h_pterr", "", 1000, -5., 5.);
   h_ptreso     = fGlobalHist.make<TH1D>("h_ptreso", "", 1000, -5., 5.);
@@ -173,24 +167,11 @@ SayanCMW::SayanCMW(const edm::ParameterSet& iConfig) :  //Parametrized Construct
   hcent_bin    = fGlobalHist.make<TH1F>("hcent_bin", "", 200, 0.0, 200.0);
   hcentbin_array    = fGlobalHist.make<TH1F>("hcentbin_array", "", (centbining.size() -1), &centbining[0]);
   
-  hzvtxbin3_array    = fGlobalHist.make<TH1F>("hzvtxbin3_array", "", (zvtxbining3.size() -1), &zvtxbining3[0]);
-  hzvtxbin2p5_array    = fGlobalHist.make<TH1F>("hzvtxbin2p5_array", "", (zvtxbining2p5.size() -1), &zvtxbining2p5[0]);
-  hzvtxbin2_array    = fGlobalHist.make<TH1F>("hzvtxbin2_array", "", (zvtxbining2.size() -1), &zvtxbining2[0]);
-  hzvtxbin1p5_array    = fGlobalHist.make<TH1F>("hzvtxbin1p5_array", "", (zvtxbining1p5.size() -1), &zvtxbining1p5[0]);
-  hzvtxbin1_array    = fGlobalHist.make<TH1F>("hzvtxbin1_array", "", (zvtxbining1.size() -1), &zvtxbining1[0]);
-  
-  heta_p5binwidth    = fGlobalHist.make<TH1F>("heta_p5binwidth", "", 1, -2.4, 2.4 );
-  //heta_p5binwidth    = fGlobalHist.make<TH1F>("heta_p5binwidth", "", 10, -2.5, 2.5 );
-  //heta_p5binwidth    = fGlobalHist.make<TH1F>("heta_p5binwidth", "", (etabining5.size() -1), &etabining5[0] );
-  heta_p4binwidth    = fGlobalHist.make<TH1F>("heta_p4binwidth", "", (etabining4.size() -1), &etabining4[0] );
-  heta_p3binwidth    = fGlobalHist.make<TH1F>("heta_p3binwidth", "", (etabining3.size() -1), &etabining3[0] );
-  heta_p2binwidth    = fGlobalHist.make<TH1F>("heta_p2binwidth", "", (etabining2.size() -1), &etabining2[0] );
-
   hpt_trg    = fGlobalHist.make<TH1F>("hpt_trg", "", (trg_ptbin.size() -1), &trg_ptbin[0] );
   hpt_asso    = fGlobalHist.make<TH1F>("hpt_asso", "", (ass_ptbin.size() -1), &ass_ptbin[0] );
 
-  //*************************************************************************************************************************************                                                                
-  tp1d_mpteta_nbin   = fGlobalHist.make<TProfile>("tp1d_mpt_nbin", "", (etabining.size() -1), &etabining[0], -1e10, 1e10);
+  //***************************************************************************************************************************
+  
   tp1d_mptetaP_nbin   = fGlobalHist.make<TProfile>("tp1d_mptP_nbin", "", (etabining.size() -1), &etabining[0], -1e10, 1e10);
   tp1d_mptetaN_nbin   = fGlobalHist.make<TProfile>("tp1d_mptN_nbin", "", (etabining.size() -1), &etabining[0], -1e10, 1e10);
 
@@ -206,8 +187,7 @@ SayanCMW::SayanCMW(const edm::ParameterSet& iConfig) :  //Parametrized Construct
   hetaP_nbin_w    = f_effw.make<TH1F>("hetaP_nbin_w", "", (etabining.size() -1), &etabining[0] );
   hetaN_nbin_w    = f_effw.make<TH1F>("hetaN_nbin_w", "", (etabining.size() -1), &etabining[0] );
 
-  //*************************************************************************************************************************************
-  tp1d_mpteta_nbin_w   = f_effw.make<TProfile>("tp1d_mpt_nbin_w", "", (etabining.size() -1), &etabining[0], -1e10, 1e10);
+  //***********************************************************************************************************************
   tp1d_mptetaP_nbin_w   = f_effw.make<TProfile>("tp1d_mptP_nbin_w", "", (etabining.size() -1), &etabining[0], -1e10, 1e10);
   tp1d_mptetaN_nbin_w   = f_effw.make<TProfile>("tp1d_mptN_nbin_w", "", (etabining.size() -1), &etabining[0], -1e10, 1e10);
 
@@ -215,9 +195,6 @@ SayanCMW::SayanCMW(const edm::ParameterSet& iConfig) :  //Parametrized Construct
   int nEtaBins_ =32;
   int nPhiBins_ =32;
   
-  //int nEtaBins_ =64;
-  //int nPhiBins_ =64;
-
   double etamax_trg_ = 2.4;             //default 2.4
   double etamin_trg_ = -2.4;            //default -2.4
   double etamax_ass_ = 2.4;             //default 2.4
@@ -232,23 +209,21 @@ SayanCMW::SayanCMW(const edm::ParameterSet& iConfig) :  //Parametrized Construct
 
   TFileDirectory f_dpt = fs->mkdir("Jet_study");
   
-  //zvtxbin
+  //ptbin
   for(unsigned int i = 0; i< trg_ptbin.size() -1; i++)
     {
-      //for(unsigned int j = 0; j< ass_ptbin.size()-1; j++)
       for(unsigned int j = 0; j<= i; j++)
 	{
-	  hsignal_c2_zvtx[i][j]   = f_dpt.make<TH2D>(Form("hsignal_c2_pttrg_%d_ptass_%d",i,j), "", nEtaBins_ + 1, minEta, maxEta, nPhiBins_ - 1, minPhi, maxPhi);
-	  hsignal_c2_zvtx_2eff[i][j]   = f_dpt.make<TH2D>(Form("hsignal_c2_2eff_pttrg_%d_ptass_%d",i,j), "", nEtaBins_ + 1, minEta, maxEta, nPhiBins_ - 1, minPhi, maxPhi);
+	  hsignal_c2_ptbin[i][j]   = f_dpt.make<TH2D>(Form("hsignal_c2_pttrg_%d_ptass_%d",i,j), Form("%1.1f<p_{T}^{trg}<%1.1f GeV/c, %1.1f<p_{T}^{ass}<%1.1f GeV/c;#Delta#eta;#Delta#phi",trg_ptbin[i], trg_ptbin[i+1], ass_ptbin[j], ass_ptbin[j+1]), nEtaBins_ + 1, minEta, maxEta, nPhiBins_ - 1, minPhi, maxPhi);
+	  hsignal_c2_ptbin_2eff[i][j]   = f_dpt.make<TH2D>(Form("hsignal_c2_2eff_pttrg_%d_ptass_%d",i,j), Form("%1.1f<p_{T}^{trg}<%1.1f GeV/c, %1.1f<p_{T}^{ass}<%1.1f GeV/c;#Delta#eta;#Delta#phi",trg_ptbin[i], trg_ptbin[i+1], ass_ptbin[j], ass_ptbin[j+1]), nEtaBins_ + 1, minEta, maxEta, nPhiBins_ - 1, minPhi, maxPhi);
 	  
 	  //mixing
-	  hsignal_c2_zvtx_mix[i][j]   = f_dpt.make<TH2D>(Form("hsignal_c2_mix_pttrg_%d_ptass_%d",i,j), "", nEtaBins_ + 1, minEta, maxEta, nPhiBins_ - 1, minPhi, maxPhi);
-	  hsignal_c2_zvtx_mix_2eff[i][j]   = f_dpt.make<TH2D>(Form("hsignal_c2_mix_2eff_pttrg_%d_ptass_%d",i,j), "", nEtaBins_ + 1, minEta, maxEta, nPhiBins_ - 1, minPhi, maxPhi);
-	  
+	  hsignal_c2_ptbin_mix[i][j]   = f_dpt.make<TH2D>(Form("hsignal_c2_mix_pttrg_%d_ptass_%d",i,j), Form("%1.1f<p_{T}^{trg}<%1.1f GeV/c, %1.1f<p_{T}^{ass}<%1.1f GeV/c;#Delta#eta;#Delta#phi",trg_ptbin[i], trg_ptbin[i+1], ass_ptbin[j], ass_ptbin[j+1]), nEtaBins_ + 1, minEta, maxEta, nPhiBins_ - 1, minPhi, maxPhi);
+	  hsignal_c2_ptbin_mix_2eff[i][j]   = f_dpt.make<TH2D>(Form("hsignal_c2_mix_2eff_pttrg_%d_ptass_%d",i,j), Form("%1.1f<p_{T}^{trg}<%1.1f GeV/c, %1.1f<p_{T}^{ass}<%1.1f GeV/c;#Delta#eta;#Delta#phi",trg_ptbin[i], trg_ptbin[i+1], ass_ptbin[j], ass_ptbin[j+1]), nEtaBins_ + 1, minEta, maxEta, nPhiBins_ - 1, minPhi, maxPhi);
 	}
       
-      hntrg_addbincontent[i]  = f_dpt.make<TH1D>(Form("hntrg_addbincontent_pttrg_%d",i), "", 3, 0, 3);
-      hntrg_corr_addbincontent[i]  = f_dpt.make<TH1D>(Form("hntrg_corr_addbincontent_pttrg_%d",i), "", 3, 0, 3);
+      hntrg_addbincontent[i]  = f_dpt.make<TH1D>(Form("hntrg_addbincontent_pttrg_%d",i), Form("%1.1f < p_{T, Trigg} < %1.1f GeV/c", trg_ptbin[i], trg_ptbin[i+1]), 3, 0, 3);
+      hntrg_corr_addbincontent[i]  = f_dpt.make<TH1D>(Form("hntrg_corr_addbincontent_pttrg_%d",i), Form("%1.1f < p_{T, Trigg} < %1.1f GeV/c", trg_ptbin[i], trg_ptbin[i+1]), 3, 0, 3);
     }
 }
 
@@ -293,11 +268,9 @@ SayanCMW::endJob()
     {
       if( ievt % 100 ==0 ) std::cout<< " Processing " << ievt << "th event"<< "second event loop " <<std::endl;
       
-      float cent_ = evtVec_[ievt].cent;
-      float zvtx_ = evtVec_[ievt].zvtx;
       unsigned int itrack = 0;
       unsigned int ntrack = evtVec_[ievt].pVect[itrack].size();
-      
+    
       // ---- trigger track loop:: track loop 1
       for(unsigned int n = 0; n < ntrack; n++)
 	{	  
@@ -357,76 +330,54 @@ SayanCMW::endJob()
 	      
 	      double w_nm = w_n*w_m;
 
-	      //zvtxbin and ptbin
-	      hsignal_c2_zvtx[kpt_trg][kpt_ass]->Fill( deltaEta, deltaPhi, 1.0 );
-	      hsignal_c2_zvtx_2eff[kpt_trg][kpt_ass]->Fill( deltaEta, deltaPhi, 1.0*w_nm );
-
-	      /*
-		//zvtxbin and ptbin
-		hsignal_c2_zvtx[kzvtx][keta5_n]->Fill( fabs(deltaEta), deltaPhi, 1.0/4.0 );
-		hsignal_c2_zvtx[kzvtx][keta5_n]->Fill(-fabs(deltaEta), deltaPhi, 1.0/4.0 );
-		hsignal_c2_zvtx[kzvtx][keta5_n]->Fill( fabs(deltaEta), deltaPhi2, 1.0/4.0 );
-		hsignal_c2_zvtx[kzvtx][keta5_n]->Fill(-fabs(deltaEta), deltaPhi2, 1.0/4.0 );
+	      if (nonsym){
+		//pt: trigbin and assocbin
+		hsignal_c2_ptbin[kpt_trg][kpt_ass]->Fill( deltaEta, deltaPhi, 1.0 );
+		hsignal_c2_ptbin_2eff[kpt_trg][kpt_ass]->Fill( deltaEta, deltaPhi, 1.0*w_nm );
+	      }
+	      else {
+		//pt: trigbin and assocbin
+		hsignal_c2_ptbin[kpt_trg][kpt_ass]->Fill( fabs(deltaEta), deltaPhi, 1.0/4.0 );
+		hsignal_c2_ptbin[kpt_trg][kpt_ass]->Fill(-fabs(deltaEta), deltaPhi, 1.0/4.0 );
+		hsignal_c2_ptbin[kpt_trg][kpt_ass]->Fill( fabs(deltaEta), deltaPhi2, 1.0/4.0 );
+		hsignal_c2_ptbin[kpt_trg][kpt_ass]->Fill(-fabs(deltaEta), deltaPhi2, 1.0/4.0 );
 	      
-		hsignal_c2_zvtx_2eff[kzvtx][keta5_n]->Fill( fabs(deltaEta), deltaPhi, 1.0*w_nm/4.0 );
-		hsignal_c2_zvtx_2eff[kzvtx][keta5_n]->Fill(-fabs(deltaEta), deltaPhi, 1.0*w_nm/4.0 );
-		hsignal_c2_zvtx_2eff[kzvtx][keta5_n]->Fill( fabs(deltaEta), deltaPhi2, 1.0*w_nm/4.0 );
-		hsignal_c2_zvtx_2eff[kzvtx][keta5_n]->Fill(-fabs(deltaEta), deltaPhi2, 1.0*w_nm/4.0 );
-		
-	      */
+		hsignal_c2_ptbin_2eff[kpt_trg][kpt_ass]->Fill( fabs(deltaEta), deltaPhi, 1.0*w_nm/4.0 );
+		hsignal_c2_ptbin_2eff[kpt_trg][kpt_ass]->Fill(-fabs(deltaEta), deltaPhi, 1.0*w_nm/4.0 );
+		hsignal_c2_ptbin_2eff[kpt_trg][kpt_ass]->Fill( fabs(deltaEta), deltaPhi2, 1.0*w_nm/4.0 );
+		hsignal_c2_ptbin_2eff[kpt_trg][kpt_ass]->Fill(-fabs(deltaEta), deltaPhi2, 1.0*w_nm/4.0 );
+	      }
+	  	  		  
 	    }//end of associated track loop
   
 	}//end of trigger track loop
 
-
-
-      //*********************************************************************************************************************                                                        
-      //added by sayan:: mixing event background                                                                                       
+      //**************************************************************************************
+      
+      //added by sayan:: mixing event background
       unsigned int mixstart = ievt - bkgFactor/2;
-      unsigned int mixend   = ievt + bkgFactor/2 + 1;                                                                                             
-      
-      /*    
-      if(ievt < bkgFactor)                                                                                                                         
+      unsigned int mixend   = ievt + bkgFactor/2 + 1;                                                                           
+      if(ievt < bkgFactor/2)
 	{                                                   
-	  mixstart = 0;                                                                                                                              
-	  mixend   = 2*bkgFactor + 1;                                                                                                              
-	}
-      
-      else if(ievt > evtVec_.size() - bkgFactor - 1)                                     
-	{                                                                                                                                            
-	  mixstart = evtVec_.size() - 2*bkgFactor - 1;                                                                                              
-	  mixend   = evtVec_.size();                                                                                                               
-	}                                                                                                                                   
-
-      if( mixend > evtVec_.size() )                                                                                                                
-	mixend = evtVec_.size();       
-      */      
-
-      if(ievt < bkgFactor/2)                                                                                                                         
-	{                                                   
-	  mixstart = 0;                                                                                                                              
-	  mixend   = bkgFactor + 1;                                                                                                              
+	  mixstart = 0;
+	  mixend   = bkgFactor + 1;
 	}
       
       else if(ievt > evtVec_.size() - bkgFactor/2 - 1)                                     
-	{                                                                                                                                            
-	  mixstart = evtVec_.size() - bkgFactor - 1;                                                                                              
-	  mixend   = evtVec_.size();                                                                                                               
-	}                                                                                                                                   
-
-      if( mixend > evtVec_.size() )                                                                                                                
+	{
+	  mixstart = evtVec_.size() - bkgFactor - 1;
+	  mixend   = evtVec_.size();
+	}
+      
+      if( mixend > evtVec_.size() )
 	mixend = evtVec_.size();       
       
-
-
-
-
       for( unsigned int jevt = mixstart; jevt < mixend; jevt++ )
 	{
 	  if(ievt == jevt) continue;
 
 	  if( evtVec_[ievt].run ==  evtVec_[jevt].run && evtVec_[ievt].event == evtVec_[jevt].event ) continue;
-
+	  
 	  double deltazvtx = evtVec_[ievt].zvtx-evtVec_[jevt].zvtx;
 	  if(fabs(deltazvtx) > 2.0) continue;
 	    
@@ -434,7 +385,7 @@ SayanCMW::endJob()
 	  unsigned int nsize_jevt = evtVec_[jevt].pVect[itrack].size();
 	  
 	  if (nsize_ievt ==0 || nsize_jevt ==0) continue;
-	  
+	  	  	  	  
 	  //differential track loop for background, ******** event: ievt *******************                 
                                                                         
 	  for(unsigned int mi = 0; mi < nsize_ievt; mi++)
@@ -478,7 +429,7 @@ SayanCMW::endJob()
 		  if (pt_mj < pt_ass_min || pt_mj >= pt_ass_max) continue;
 		  if (eta_mj < eta_ass_min || eta_mj >= eta_ass_max) continue;
 		  if (pt_mi == pt_mj && chg_mi == chg_mj && eta_mi == eta_mj && phi_mi == phi_mj) continue;
-
+		  
 		  int kpt_ass = (hpt_asso->FindBin(pt_mj)) - 1;
 		  if (kpt_trg < kpt_ass) continue;
 
@@ -494,25 +445,25 @@ SayanCMW::endJob()
 		  double deltaEta = GetDeltaEta( eta_mi, eta_mj );
 		  
 		  double w_mix = w_mi*w_mj;
-		  
 
-		  //zvtx
-		  hsignal_c2_zvtx_mix[kpt_trg][kpt_ass]->Fill( deltaEta, deltaPhi, 1.0 );
-		  hsignal_c2_zvtx_mix_2eff[kpt_trg][kpt_ass]->Fill( deltaEta, deltaPhi, 1.0*w_mix );
+		  if(nonsym){
+		  //pt: trigbin and assocbin
+		  hsignal_c2_ptbin_mix[kpt_trg][kpt_ass]->Fill( deltaEta, deltaPhi, 1.0 );
+		  hsignal_c2_ptbin_mix_2eff[kpt_trg][kpt_ass]->Fill( deltaEta, deltaPhi, 1.0*w_mix );
+		  }
+		  else {		  
+		  //pt: trigbin and assocbin
+		  hsignal_c2_ptbin_mix[kpt_trg][kpt_ass]->Fill( fabs(deltaEta), deltaPhi, 1.0/4.0 );
+		  hsignal_c2_ptbin_mix[kpt_trg][kpt_ass]->Fill(-fabs(deltaEta), deltaPhi, 1.0/4.0 );
+		  hsignal_c2_ptbin_mix[kpt_trg][kpt_ass]->Fill( fabs(deltaEta), deltaPhi2, 1.0/4.0 );
+		  hsignal_c2_ptbin_mix[kpt_trg][kpt_ass]->Fill(-fabs(deltaEta), deltaPhi2, 1.0/4.0 );
 		  
-		  /*		  
-		  //zvtx
-		  hsignal_c2_zvtx_mix[kzvtx1][keta5_m]->Fill( fabs(deltaEta), deltaPhi, 1.0/4.0 );
-		  hsignal_c2_zvtx_mix[kzvtx1][keta5_m]->Fill(-fabs(deltaEta), deltaPhi, 1.0/4.0 );
-		  hsignal_c2_zvtx_mix[kzvtx1][keta5_m]->Fill( fabs(deltaEta), deltaPhi2, 1.0/4.0 );
-		  hsignal_c2_zvtx_mix[kzvtx1][keta5_m]->Fill(-fabs(deltaEta), deltaPhi2, 1.0/4.0 );
+		  hsignal_c2_ptbin_mix_2eff[kpt_trg][kpt_ass]->Fill( fabs(deltaEta), deltaPhi, 1.0*w_mix/4.0 );
+		  hsignal_c2_ptbin_mix_2eff[kpt_trg][kpt_ass]->Fill(-fabs(deltaEta), deltaPhi, 1.0*w_mix/4.0 );
+		  hsignal_c2_ptbin_mix_2eff[kpt_trg][kpt_ass]->Fill( fabs(deltaEta), deltaPhi2, 1.0*w_mix/4.0 );
+		  hsignal_c2_ptbin_mix_2eff[kpt_trg][kpt_ass]->Fill(-fabs(deltaEta), deltaPhi2, 1.0*w_mix/4.0 );
+		  }
 		  
-		  hsignal_c2_zvtx_mix_2eff[kzvtx1][keta5_m]->Fill( fabs(deltaEta), deltaPhi, 1.0*w_mix/4.0 );
-		  hsignal_c2_zvtx_mix_2eff[kzvtx1][keta5_m]->Fill(-fabs(deltaEta), deltaPhi, 1.0*w_mix/4.0 );
-		  hsignal_c2_zvtx_mix_2eff[kzvtx1][keta5_m]->Fill( fabs(deltaEta), deltaPhi2, 1.0*w_mix/4.0 );
-		  hsignal_c2_zvtx_mix_2eff[kzvtx1][keta5_m]->Fill(-fabs(deltaEta), deltaPhi2, 1.0*w_mix/4.0 );
-		  */
-
 		}// mj loop
 		
 	      }//mi loop
@@ -546,6 +497,10 @@ SayanCMW::LoopCMWVertices( const edm::Event& iEvent, const edm::EventSetup& iSet
   //track collection
   auto trks = iEvent.getHandle( trackTags_ );
 
+  //for generalAndHiPixel tracks
+  edm::Handle< reco::TrackCollection > tracks_merg;                                                             
+  iEvent.getByToken(trackTags_merge_, tracks_merg);  
+  
   auto trksgen = iEvent.getHandle( trackTagsgen_ );
 
   //access tracks chi2/ndf
@@ -570,7 +525,7 @@ SayanCMW::LoopCMWVertices( const edm::Event& iEvent, const edm::EventSetup& iSet
   xBestVtx_ = bestvtx.x();
   yBestVtx_ = bestvtx.y();
   zBestVtx_ = bestvtx.z();
-
+  
   if ( zBestVtx_ < zminVtx_ || zBestVtx_ >= zmaxVtx_ ) return; 
   //if ( fabs(zBestVtx_) < zminVtx_ || fabs(zBestVtx_) > zmaxVtx_ ) return; 
 
@@ -586,11 +541,9 @@ SayanCMW::LoopCMWVertices( const edm::Event& iEvent, const edm::EventSetup& iSet
   const Double_t hiHF = recocent->EtHFtowerSum();
   
   // nominal, up, down
-
   if (cent_2023_run3)
     {
       centBin = ( float ) (*cbin);
-      //if (cent_nom) centBin = getHiBinFromhiHF(hiHF, true, false, false);
     }
   else {
   
@@ -598,11 +551,9 @@ SayanCMW::LoopCMWVertices( const edm::Event& iEvent, const edm::EventSetup& iSet
   if (cent_up) centBin = getHiBinFromhiHF(hiHF, false, true, false);
   if (cent_down) centBin = getHiBinFromhiHF(hiHF, false, false, true);
   }
-  //centBin = getHiBinFromhiHF(hiHF);
   if (centBin < centmin_*2 || centBin >= centmax_*2) return;
 
   hZBestVtx -> Fill(zBestVtx_); 
-  //hcent_bin -> Fill(centBin/2.);
   hcent_bin -> Fill(centBin);
   hcentbin_array -> Fill(centBin);
   
@@ -612,13 +563,70 @@ SayanCMW::LoopCMWVertices( const edm::Event& iEvent, const edm::EventSetup& iSet
   evt_->run = run_no;
   evt_->event = event_no;
   evt_->zvtx = zBestVtx_;
-  //evt_->cent = (centBin/2.);
   evt_->cent = (centBin);
 
 
   //********* start track loop *********
-  
-  if(ifMcreco_){
+
+  if (ifMcreco_ && genAndHiPixTrk_){
+    for( reco::TrackCollection::const_iterator iter_tk = tracks_merg->begin(); iter_tk != tracks_merg->end(); ++iter_tk ){
+
+      double dzvtx = iter_tk->dz( bestvtx );                                                                                    
+      double dxyvtx = iter_tk->dxy( bestvtx );
+      double dzerror = std::hypot( iter_tk->dzError(), bestvzError );
+      double dxyerror = iter_tk->dxyError( bestvtx, vtx_cov );
+      double pterror = iter_tk->ptError();
+
+      double pt = iter_tk->pt();                                                                                                       double eta = iter_tk->eta();                                                                                               
+      int charge = iter_tk->charge();                                                                                            
+      double phi = iter_tk->phi(); 
+
+      if( charge == 0 ) continue;
+      if( pt <= ptmin_ || pt > ptmax_ ) continue;
+      if( eta <= etamin_ || eta >= etamax_ ) continue;
+
+      float wgt = 1.0; float weight = 1.0; int index = 0;
+      AssignpTbins(pt, eta, phi, wgt, weight, charge, index);
+      
+      hpt->Fill(pt);
+      heta->Fill(eta);
+
+      int kpt_trg = (hpt_trg->FindBin(pt)) - 1;
+
+      if(pt >= pt_trigg_min && pt < pt_trigg_max && eta >= eta_trigg_min && eta < eta_trigg_max )
+        {
+          hpt_trg->Fill(pt);
+          hpt_trigg->Fill(pt);
+          heta_nbin_trigg->Fill(eta);
+          hphi_nbin_trigg->Fill(phi);
+
+          hntrg_addbincontent[kpt_trg] ->AddBinContent(1, 1);
+          hntrg_corr_addbincontent[kpt_trg] ->AddBinContent(1, weight);
+
+          if(charge > 0)
+            {
+              hntrg_addbincontent[kpt_trg] ->AddBinContent(2, 1);
+              hntrg_corr_addbincontent[kpt_trg] ->AddBinContent(2, weight);
+            }
+          if(charge < 0)
+            {
+              hntrg_addbincontent[kpt_trg] ->AddBinContent(3, 1);
+              hntrg_corr_addbincontent[kpt_trg] ->AddBinContent(3, weight);
+            }
+	}
+
+      if(pt >= pt_ass_min && pt < pt_ass_max && eta >= eta_ass_min && eta < eta_ass_max   )
+        {
+          hpt_asso->Fill(pt);
+          hpt_ass->Fill(pt);
+          heta_nbin_ass->Fill(eta);
+          hphi_nbin_ass->Fill(phi);
+        }
+    }
+
+  }
+
+  else if(ifMcreco_ && genTrk_){
   int trkIndx = -1;
   // Loop over tracks
   for (auto const& trk : *trks)
@@ -651,21 +659,13 @@ SayanCMW::LoopCMWVertices( const edm::Event& iEvent, const edm::EventSetup& iSet
       double chi2n = ( chi2ndof / hit_pattern.trackerLayersWithMeasurement() );
 
       //selected tracks
-      if (cent_2023_run3)
-	{
-	  if( charge == 0 ) continue;
-	}
-      else
-	{
-	  if( charge == 0 ) continue;
-	  if( fabs(pterror) / pt >= 0.1 ) continue;                                           //Default cuts
-	  if( fabs(dzvtx / dzerror) >= 3.0 ) continue;                                        //Default cuts
-	  if( fabs(dxyvtx / dxyerror) >= 3.0  ) continue;                                     //Default cuts
-	  if( ( chi2ndof / hit_pattern.trackerLayersWithMeasurement() ) >= 0.18 ) continue;   //Default cuts
-	  
-	  if ( iter_tk.numberOfValidHits() < 11 ) continue;
-	}
-      
+      if( charge == 0 ) continue;
+      if( fabs(pterror) / pt >= 0.1 ) continue;                                           //Default cuts
+      if( fabs(dzvtx / dzerror) >= 3.0 ) continue;                                        //Default cuts
+      if( fabs(dxyvtx / dxyerror) >= 3.0  ) continue;                                     //Default cuts
+      if( ( chi2ndof / hit_pattern.trackerLayersWithMeasurement() ) >= 0.18 ) continue;   //Default cuts
+      if ( iter_tk.numberOfValidHits() < 11 ) continue;
+    
       /*
 	if( fabs(pterror) / pt >= 0.15 ) continue;                                           //Loose cuts
 	if( fabs(dzvtx / dzerror) >= 5.0 ) continue;                                        //Loose cuts
@@ -680,21 +680,14 @@ SayanCMW::LoopCMWVertices( const edm::Event& iEvent, const edm::EventSetup& iSet
       */
       
       if( pt <= ptmin_ || pt > ptmax_ ) continue;
-      //if( pt <= ptmin_ ) continue;                                                        //ptmin = 0.5
       if( eta <= etamin_ || eta >= etamax_ ) continue;                                    //|eta|<2.4
-      //if ( ( chi2ndof / hit_pattern.trackerLayersWithMeasurement() ) >= 0.18 ) continue;  //Default cuts
-      //if ( iter_tk.numberOfValidHits() < 11 ) continue;
       
       int index = GetpTbin(pt);
       if(index == -1) continue;
-      //int index = 0;
       
       float wgt = TrkEff->getCorrection(pt, eta, centBin);
-      //float wgt = TrkEff->getCorrection(pt, eta, zBestVtx_, centBin);
-      
       float weight = -999.0;
-      
-      
+            
       //weight(pt,eta,centbin)
       if (charge > 0)
 	{
@@ -707,20 +700,6 @@ SayanCMW::LoopCMWVertices( const edm::Event& iEvent, const edm::EventSetup& iSet
 	  if(weight == -999.0) continue;
 	}
       
-      /*
-      //weight(pt,eta,zvtx,centbin)
-      if (charge > 0)
-	{
-	  weight = TrkEff1->getCorrection(pt, eta, zBestVtx_, centBin);
-	  if(weight == -999.0) continue;
-	}
-      else
-	{
-	  weight = TrkEff2->getCorrection(pt, eta, zBestVtx_, centBin);
-	  if(weight == -999.0) continue;
-	}
-      */
-
       if (cent_2023_run3) weight = 1.0;
       AssignpTbins(pt, eta, phi, wgt, weight, charge, index);
       
@@ -742,19 +721,19 @@ SayanCMW::LoopCMWVertices( const edm::Event& iEvent, const edm::EventSetup& iSet
       hpt_w ->Fill(pt, weight);
       heta_w ->Fill(eta, weight);
       heta_nbin_w ->Fill(eta, weight);
-
-      int kpt_trg = (hpt_trg->FindBin(pt)) - 1;
       
+      int kpt_trg = (hpt_trg->FindBin(pt)) - 1;
+            
       if(pt >= pt_trigg_min && pt < pt_trigg_max && eta >= eta_trigg_min && eta < eta_trigg_max )
         {
 	  hpt_trg->Fill(pt);
           hpt_trigg->Fill(pt);
           heta_nbin_trigg->Fill(eta);
           hphi_nbin_trigg->Fill(phi);
-	  
+          	  
 	  hntrg_addbincontent[kpt_trg] ->AddBinContent(1, 1);
           hntrg_corr_addbincontent[kpt_trg] ->AddBinContent(1, weight);
-
+	  
 	  if(charge > 0)
 	    {
 	      hntrg_addbincontent[kpt_trg] ->AddBinContent(2, 1);
@@ -775,9 +754,7 @@ SayanCMW::LoopCMWVertices( const edm::Event& iEvent, const edm::EventSetup& iSet
           hpt_ass->Fill(pt);
           heta_nbin_ass->Fill(eta);
           hphi_nbin_ass->Fill(phi);
-        }
-
-
+	}
       
       if (charge > 0)
 	{
@@ -845,20 +822,20 @@ SayanCMW::LoopCMWVertices( const edm::Event& iEvent, const edm::EventSetup& iSet
           hpt_w ->Fill(pt, weight);
           heta_w ->Fill(eta, weight);
           heta_nbin_w ->Fill(eta, weight);
-
+	  
           if(pt >= pt_trigg_min && pt < pt_trigg_max && eta >= eta_trigg_min && eta < eta_trigg_max )
             {
               hpt_trigg->Fill(pt);
               heta_nbin_trigg->Fill(eta);
               hphi_nbin_trigg->Fill(phi);
-            }
+	    }
 
           if(pt >= pt_ass_min && pt < pt_ass_max && eta >= eta_ass_min && eta < eta_ass_max   )
             {
               hpt_ass->Fill(pt);
               heta_nbin_ass->Fill(eta);
               hphi_nbin_ass->Fill(phi);
-            }
+	    }
 
           if (charge > 0)
             {
@@ -885,7 +862,7 @@ SayanCMW::LoopCMWVertices( const edm::Event& iEvent, const edm::EventSetup& iSet
               hptN_w ->Fill(pt, weight);
               hetaN_w ->Fill(eta, weight);
               hetaN_nbin_w ->Fill(eta, weight);
-
+	      
               tp1d_mptetaN_nbin ->Fill(eta, pt);
               tp1d_mptetaN_nbin_w ->Fill(eta, pt, weight);
             }
@@ -894,7 +871,7 @@ SayanCMW::LoopCMWVertices( const edm::Event& iEvent, const edm::EventSetup& iSet
 
   evtVec_.push_back(*evt_);
 
-  //reset evt container                                                                                                                                                                                   
+  //reset evt container
   evt_->reset();
   
 }//end of LoopCMWVertices

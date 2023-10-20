@@ -5,7 +5,7 @@
 //
 //
 // Author:        Sayan Chatterjee
-// Last modified: 29/06/2022
+// Last modified: 20/10/2023
 
 
 
@@ -39,9 +39,6 @@
 #include "DataFormats/HeavyIonEvent/interface/EvtPlane.h"
 
 #include "Analyzers/SayanCMW/data/EFF/trackingEfficiency2018PbPb.h"
-//#include "Analyzers/SayanCMW/data/EFF/trackingEfficiency2018PbPb_newEffv1.h"
-//#include "Analyzers/SayanCMW/data/EFF/trackingEfficiency2018PbPb_newEffv1_pTintegratedweight_w1.h"    //weight(pt,eta,centbin)
-//#include "Analyzers/SayanCMW/data/EFF/trackingEfficiency2018PbPb_thnsparse4D_etaptzvtxcent_newEffv1.h"  //weight(pt,eta,zvtx,centbin)
 #include "Analyzers/SayanCMW/interface/DiHadronCorrelationEvt.h"
 
 
@@ -88,8 +85,10 @@ private:
   edm::EDGetTokenT< edm::ValueMap < float > > chi2Map_;
   
   //## vertex ##     
-  
   edm::EDGetTokenT < reco::VertexCollection > vtxTags_;
+
+  //## generalAndhiPixelTracks ##
+  edm::EDGetTokenT<reco::TrackCollection> trackTags_merge_;
   
   //## centrality ##
   // used to access centrality bins
@@ -155,21 +154,15 @@ private:
   std::vector<double> trg_ptbin;
   std::vector<double> ass_ptbin;
   std::vector<double> etabining;
-  std::vector<double> etabining5;
-  std::vector<double> etabining4;
-  std::vector<double> etabining3;
-  std::vector<double> etabining2;
   std::vector<double> pTbining;
   std::vector<double> phibining;
   std::vector<double> centbining;
-  std::vector<double> zvtxbining3;
-  std::vector<double> zvtxbining2p5;
-  std::vector<double> zvtxbining2;
-  std::vector<double> zvtxbining1p5;
-  std::vector<double> zvtxbining1;
-  //std::vector<double> zvtxfull_;
+
   unsigned int bkgFactor;
   bool ifMcreco_;
+  bool genTrk_;
+  bool genAndHiPixTrk_;
+  bool nonsym;
   bool cent_nom;
   bool cent_up;
   bool cent_down;
@@ -209,9 +202,6 @@ private:
   TH1F* heta_nbin_ass;
   TH1F* hphi_nbin_ass;
 
-  TH1F* hpt_trigg_check;
-  TH1F* hpt_ass_check;
-
   TH1D* h_nHits;
   TH1D* h_pterr;
   TH1D* h_ptreso;
@@ -222,19 +212,7 @@ private:
   TH1F* hZBestVtx;
   TH1F* hcent_bin;
   TH1F* hcentbin_array;
-  TH1F* hzvtxbin3_array;
-  TH1F* hzvtxbin2p5_array;
-  TH1F* hzvtxbin2_array;
-  TH1F* hzvtxbin1p5_array;
-  TH1F* hzvtxbin1_array;
-  
-  TH1F* heta_p5binwidth;
-  TH1F* heta_p4binwidth;
-  TH1F* heta_p3binwidth;
-  TH1F* heta_p2binwidth;
 
-  //TH1I* hntrk_pos;
-  //TH1I* hntrk_neg;
   TH1F* hpt_trg;
   TH1F* hpt_asso;
 
@@ -258,8 +236,8 @@ private:
   TProfile* tp1d_mptetaN_nbin_w;
 
   //trigger ptbin  
-  static const int ptbn_trg =2;
-  static const int ptbn =2;
+  static const int ptbn_trg =20;
+  static const int ptbn =20;
 
   TH2D* hsignal_c2[ptbn];
   TH2D* hsignal_c2_2eff[ptbn];
@@ -311,19 +289,12 @@ private:
   TH1D * hntrg_addbincontent[ptbn_trg];
   TH1D * hntrg_corr_addbincontent[ptbn_trg];
   
-  TH1D * hntrg_addbincontent_3p0trg6p0;
-  TH1D * hntrg_corr_addbincontent_3p0trg6p0;
-
-  
   //zvtxbin
-  TH2D* hsignal_c2_zvtx[ptbn_trg][ptbn];
-  TH2D* hsignal_c2_zvtx_2eff[ptbn_trg][ptbn];
+  TH2D* hsignal_c2_ptbin[ptbn_trg][ptbn];
+  TH2D* hsignal_c2_ptbin_2eff[ptbn_trg][ptbn];
   
-  TH2D* hsignal_c2_zvtx_mix[ptbn_trg][ptbn];
-  TH2D* hsignal_c2_zvtx_mix_2eff[ptbn_trg][ptbn];
-
-  //TH1D * hntrg_addbincontent_zvtx[3][ptbn];
-  //TH1D * hntrg_corr_addbincontent_zvtx[3][ptbn];
+  TH2D* hsignal_c2_ptbin_mix[ptbn_trg][ptbn];
+  TH2D* hsignal_c2_ptbin_mix_2eff[ptbn_trg][ptbn];
 
   const Int_t ncBins = 200;
 };
